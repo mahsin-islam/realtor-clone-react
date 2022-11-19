@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import OAuth from '../components/OAuth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import {db} from "../firebase";
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
 const SignUp = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
@@ -10,11 +14,42 @@ const SignUp = () => {
         password: "",
     });
     const { name, email, password } = formData;
+    const navigate = useNavigate();
     function onChange(e) {
         setFormData((prevState) => ({
             ...prevState,
             [e.target.id]: e.target.value,
         }));
+    }
+    async function onSubmit(e) {
+        e.preventDefault();
+
+        try {
+            const auth = getAuth();
+            const userCredential = await createUserWithEmailAndPassword(
+                auth,
+                email, 
+                password
+            );
+            
+            updateProfile(auth.currentUser, {
+                displayName: name
+            })
+            const user = userCredential.user;
+            const formDataCopy = {...formData}
+            delete formDataCopy.password;
+            formDataCopy.timeStamp = serverTimestamp();
+
+            await setDoc(doc(db, "users", user.uid), formDataCopy);
+            console.log(user);
+            toast.success("Sign Up Successfully");
+            navigate("/");
+        } catch (error) {
+            console.log(error);
+            toast.error("Something went wrong with the registration !", {
+                position: toast.POSITION.BOTTOM_CENTER
+              });
+        }
     }
     return (
         <section>
@@ -26,7 +61,7 @@ const SignUp = () => {
                     />
                 </div>
                 <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-                    <form>
+                    <form onSubmit={onSubmit}>
                         <input
                             className="mb-6 w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out"
                             type="text"
@@ -62,7 +97,7 @@ const SignUp = () => {
                         <div className="flex justify-between whitespace-nowrap text-sm sm:text-lg">
                             <p className="mb-6">
                                 Have a account?
-                                <Link to="/sign-in" className="text-red-600 hover:text-red-700 transition duration-200 ease-in-out ml-1">Sign Up</Link>
+                                <Link to="/sign-in" className="text-red-600 hover:text-red-700 transition duration-200 ease-in-out ml-1">Sign In</Link>
                             </p>
                             <p>
                                 <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800 transition duration-200 ease-in-out">
@@ -70,7 +105,7 @@ const SignUp = () => {
                                 </Link>
                             </p>
                         </div>
-                        <button className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800" type="submit">Sign In</button>
+                        <button className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800" type="submit">Sign Up</button>
                         <div className="flex my-4 items-center
                     before:border-t before:flex-1 before:border-gray-300
                     after:border-t after:flex-1 after:border-gray-300">
